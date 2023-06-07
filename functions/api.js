@@ -2,7 +2,15 @@ const express = require('express');
 const serverless = require('serverless-http');
 const app = express();
 const router = express.Router();
+const bodyParser = require('body-parser');
+const axios = require('axios');
+const PDFParser = require('pdf-parse');
+const cors = require('cors');
 
+
+
+app.use(bodyParser.json());
+app.use(cors())
 let records = [];
 
 //Get all students
@@ -10,41 +18,23 @@ router.get('/', (req, res) => {
   res.send('App is running..');
 });
 
-//Create new record
-router.post('/add', (req, res) => {
-  res.send('New record added.');
-});
+router.post('/extract-pdf', async (req, res) => {
+  console.log("runing")
+  const { url } = req.body;
 
-//delete existing record
-router.delete('/', (req, res) => {
-  res.send('Deleted existing record');
-});
+  try {
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer'
+    });
 
-//updating existing record
-router.put('/', (req, res) => {
-  res.send('Updating existing record');
-});
+    const pdfBuffer = Buffer.from(response.data, 'binary');
 
-//showing demo records
-router.get('/demo', (req, res) => {
-  res.json([
-    {
-      id: '001',
-      name: 'Smith',
-      email: 'smith@gmail.com',
-    },
-    {
-      id: '002',
-      name: 'Sam',
-      email: 'sam@gmail.com',
-    },
-    {
-      id: '003',
-      name: 'lily',
-      email: 'lily@gmail.com',
-    },
-  ]);
-});
+    const data = await PDFParser(pdfBuffer);
 
+    res.send(data.text);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+});
 app.use('/.netlify/functions/api', router);
 module.exports.handler = serverless(app);
